@@ -379,6 +379,130 @@ createApp({
             a.download = `annotations-${Date.now()}.json`;
             a.click();
             URL.revokeObjectURL(url);
+        },
+        async copyEffectImage() {
+            const img = this.$refs.mainImage;
+            if (!img) return;
+
+            try {
+                // 创建一个临时 canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+
+                // 绘制原图
+                ctx.drawImage(img, 0, 0);
+
+                // 计算缩放比例
+                const scaleX = img.naturalWidth / img.offsetWidth;
+                const scaleY = img.naturalHeight / img.offsetHeight;
+
+                // 绘制所有标注框
+                this.annotations.forEach(annotation => {
+                    const x = annotation.x * scaleX;
+                    const y = annotation.y * scaleY;
+                    const width = annotation.width * scaleX;
+                    const height = annotation.height * scaleY;
+
+                    // 绘制红色边框
+                    ctx.strokeStyle = '#f44336';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(x, y, width, height);
+
+                    // 绘制 ID 标签
+                    const fontSize = 24;
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    const text = annotation.id.toString();
+                    const textWidth = ctx.measureText(text).width;
+                    const padding = 8;
+
+                    // 标签背景
+                    ctx.fillStyle = '#f44336';
+                    ctx.fillRect(
+                        x + width - textWidth - padding * 2,
+                        y + height + 5,
+                        textWidth + padding * 2,
+                        fontSize + padding
+                    );
+
+                    // 标签文字
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(text, x + width - textWidth - padding, y + height + fontSize + 5);
+                });
+
+                // 将 canvas 转换为 blob 并复制到剪贴板
+                canvas.toBlob(async (blob) => {
+                    try {
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'image/png': blob
+                            })
+                        ]);
+                        alert('效果图已复制到剪贴板！');
+                    } catch (err) {
+                        console.error('复制失败:', err);
+                        alert('复制失败，请检查浏览器权限');
+                    }
+                });
+            } catch (err) {
+                console.error('复制效果图失败:', err);
+                alert('复制失败：' + err.message);
+            }
+        },
+        async copyPrompt() {
+            if (this.annotations.length === 0) return;
+
+            // 生成提示词文本
+            let prompt = '# UI 标注信息\n\n';
+            prompt += `总计 ${this.annotations.length} 个标注\n\n`;
+            
+            this.annotations.forEach((annotation, index) => {
+                prompt += `## 标注 ${annotation.id}\n`;
+                prompt += `- 类型：${annotation.typeLabel}\n`;
+                
+                if (annotation.subType) {
+                    prompt += `- 子类型：${annotation.subType}\n`;
+                }
+                
+                if (annotation.type === 'material' && annotation.materialId) {
+                    prompt += `- 素材编号：${annotation.materialId}\n`;
+                }
+                
+                if (annotation.description) {
+                    prompt += `- 说明：${annotation.description}\n`;
+                }
+                
+                prompt += `- 位置：(${annotation.x}, ${annotation.y})\n`;
+                prompt += `- 尺寸：${annotation.width} × ${annotation.height}\n`;
+                
+                if (index < this.annotations.length - 1) {
+                    prompt += '\n';
+                }
+            });
+
+            // 复制到剪贴板
+            try {
+                await navigator.clipboard.writeText(prompt);
+                alert('提示词已复制到剪贴板！');
+            } catch (err) {
+                console.error('复制失败:', err);
+                // 如果浏览器不支持 clipboard API，使用传统方法
+                const textarea = document.createElement('textarea');
+                textarea.value = prompt;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    alert('提示词已复制到剪贴板！');
+                } catch (err2) {
+                    alert('复制失败，请手动复制');
+                    console.log(prompt);
+                }
+                document.body.removeChild(textarea);
+            }
         }
     }
 }).mount('#app');

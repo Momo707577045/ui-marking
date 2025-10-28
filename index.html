@@ -55,10 +55,42 @@
             font-size: 14px;
             font-weight: 500;
             transition: background 0.3s;
+            margin-bottom: 10px;
         }
 
         .export-btn:hover {
             background: #1565c0;
+        }
+
+        .copy-btn {
+            width: 100%;
+            padding: 10px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.3s;
+            margin-bottom: 8px;
+        }
+
+        .copy-btn:hover {
+            background: #45a049;
+        }
+
+        .copy-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .copy-btn.secondary {
+            background: #ff9800;
+        }
+
+        .copy-btn.secondary:hover {
+            background: #f57c00;
         }
 
         .annotations-list {
@@ -523,6 +555,12 @@
                 <h2>标注记录</h2>
                 <button class="export-btn" @click="exportData" :disabled="annotations.length === 0">
                     导出数据
+                </button>
+                <button class="copy-btn" @click="copyEffectImage" :disabled="!imageLoaded || annotations.length === 0">
+                    📋 复制效果图
+                </button>
+                <button class="copy-btn secondary" @click="copyPrompt" :disabled="annotations.length === 0">
+                    📝 复制提示词
                 </button>
             </div>
             <div class="annotations-list">
