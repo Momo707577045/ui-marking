@@ -428,6 +428,91 @@
         .hidden {
             display: none;
         }
+
+        /* 卡片样式 */
+        .annotation-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .annotation-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            background: #fafafa;
+            transition: background 0.3s;
+            user-select: none;
+        }
+
+        .card-header:hover {
+            background: #f0f0f0;
+        }
+
+        .card-title {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-icon {
+            font-size: 16px;
+        }
+
+        .card-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .card-arrow {
+            transition: transform 0.3s;
+            font-size: 12px;
+        }
+
+        .annotation-card.collapsed .card-arrow {
+            transform: rotate(-90deg);
+        }
+
+        .card-body {
+            padding: 16px;
+            border-top: 1px solid #e0e0e0;
+            max-height: 500px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s;
+        }
+
+        .annotation-card.collapsed .card-body {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            border-top: none;
+        }
+
+        .card-content {
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+
+        .annotation-card.collapsed .card-content {
+            opacity: 0;
+        }
     </style>
 </head>
 <body>
@@ -586,71 +671,143 @@
             </div>
 
             <form @submit.prevent="saveAnnotation">
-                <div class="form-group">
-                    <label class="form-label">标注类型 *</label>
-                    <select v-model="formData.type" class="form-select" required>
-                        <option value="">请选择标注类型</option>
-                        <option value="material">素材标注</option>
-                        <option value="function">功能标注</option>
-                        <option value="basic-component">基础组件标注</option>
-                        <option value="business-component">业务组件标注</option>
-                    </select>
-                </div>
-
-                <!-- 素材标注 -->
-                <div v-if="formData.type === 'material'" class="form-group">
-                    <label class="form-label">选择素材</label>
-                    <div class="material-selector">
-                        <div 
-                            v-for="i in 6" 
-                            :key="i"
-                            class="material-item"
-                            :class="{ selected: formData.materialId === i }"
-                            @click="formData.materialId = i"
-                        >
-                            素材{{ i }}
+                <!-- 标注类型卡片 -->
+                <div class="annotation-cards">
+                    <!-- 素材标注卡片 -->
+                    <div 
+                        class="annotation-card"
+                        :class="{ 
+                            collapsed: collapsedCards.material
+                        }"
+                    >
+                        <div class="card-header" @click="toggleCard('material')">
+                            <div class="card-title">
+                                <span class="card-icon">🎨</span>
+                                <span>素材标注</span>
+                            </div>
+                            <div class="card-toggle">
+                                <span class="card-arrow">▼</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-content">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label">选择素材</label>
+                                    <div class="material-selector">
+                                        <div 
+                                            v-for="i in 6" 
+                                            :key="i"
+                                            class="material-item"
+                                            :class="{ selected: formData.materialId === i }"
+                                            @click="formData.type = 'material'; formData.materialId = i"
+                                        >
+                                            素材{{ i }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- 功能标注 -->
-                <div v-if="formData.type === 'function'" class="form-group">
-                    <label class="form-label">功能类型 *</label>
-                    <select v-model="formData.subType" class="form-select" required>
-                        <option value="">请选择功能类型</option>
-                        <option value="按钮">按钮</option>
-                        <option value="静态数据">静态数据</option>
-                        <option value="动态数据">动态数据</option>
-                        <option value="轮播">轮播</option>
-                        <option value="输入框">输入框</option>
-                        <option value="下拉菜单">下拉菜单</option>
-                    </select>
-                </div>
-
-                <!-- 基础组件标注 -->
-                <div v-if="formData.type === 'basic-component'" class="form-group">
-                    <label class="form-label">基础组件 *</label>
-                    <select v-model="formData.subType" class="form-select" required>
-                        <option value="">请选择基础组件</option>
-                        <option value="Button">Button</option>
-                        <option value="Input">Input</option>
-                        <option value="Select">Select</option>
-                        <option value="Card">Card</option>
-                        <option value="Modal">Modal</option>
-                        <option value="Table">Table</option>
-                    </select>
-                </div>
-
-                <!-- 业务组件标注 -->
-                <div v-if="formData.type === 'business-component'" class="form-group">
-                    <label class="form-label">业务组件 *</label>
-                    <input 
-                        v-model="formData.subType" 
-                        type="text" 
-                        class="form-input" 
-                        placeholder="输入业务组件名称"
-                        required
+                    <!-- 功能标注卡片 -->
+                    <div 
+                        class="annotation-card"
+                        :class="{ 
+                            collapsed: collapsedCards.function
+                        }"
                     >
+                        <div class="card-header" @click="toggleCard('function')">
+                            <div class="card-title">
+                                <span class="card-icon">⚙️</span>
+                                <span>功能标注</span>
+                            </div>
+                            <div class="card-toggle">
+                                <span class="card-arrow">▼</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-content">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label">功能类型</label>
+                                    <select v-model="formData.subType" class="form-select" @change="formData.type = 'function'">
+                                        <option value="">请选择功能类型</option>
+                                        <option value="按钮">按钮</option>
+                                        <option value="静态数据">静态数据</option>
+                                        <option value="动态数据">动态数据</option>
+                                        <option value="轮播">轮播</option>
+                                        <option value="输入框">输入框</option>
+                                        <option value="下拉菜单">下拉菜单</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 基础组件标注卡片 -->
+                    <div 
+                        class="annotation-card"
+                        :class="{ 
+                            collapsed: collapsedCards['basic-component']
+                        }"
+                    >
+                        <div class="card-header" @click="toggleCard('basic-component')">
+                            <div class="card-title">
+                                <span class="card-icon">🧩</span>
+                                <span>基础组件标注</span>
+                            </div>
+                            <div class="card-toggle">
+                                <span class="card-arrow">▼</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-content">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label">基础组件</label>
+                                    <select v-model="formData.subType" class="form-select" @change="formData.type = 'basic-component'">
+                                        <option value="">请选择基础组件</option>
+                                        <option value="Button">Button</option>
+                                        <option value="Input">Input</option>
+                                        <option value="Select">Select</option>
+                                        <option value="Card">Card</option>
+                                        <option value="Modal">Modal</option>
+                                        <option value="Table">Table</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 业务组件标注卡片 -->
+                    <div 
+                        class="annotation-card"
+                        :class="{ 
+                            collapsed: collapsedCards['business-component']
+                        }"
+                    >
+                        <div class="card-header" @click="toggleCard('business-component')">
+                            <div class="card-title">
+                                <span class="card-icon">💼</span>
+                                <span>业务组件标注</span>
+                            </div>
+                            <div class="card-toggle">
+                                <span class="card-arrow">▼</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-content">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label">业务组件</label>
+                                    <input 
+                                        v-model="formData.subType" 
+                                        type="text" 
+                                        class="form-input" 
+                                        placeholder="输入业务组件名称"
+                                        @input="formData.type = 'business-component'"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 补充说明 -->
@@ -666,7 +823,7 @@
                 <button 
                     type="submit" 
                     class="submit-btn"
-                    :disabled="!currentSelection || !formData.type"
+                    :disabled="!currentSelection"
                 >
                     {{ editingId ? '更新标注' : '保存标注' }}
                 </button>

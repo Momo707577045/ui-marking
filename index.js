@@ -21,6 +21,12 @@ createApp({
                 subType: '',
                 materialId: null,
                 description: ''
+            },
+            collapsedCards: {
+                material: false,
+                function: false,
+                'basic-component': false,
+                'business-component': false
             }
         };
     },
@@ -183,7 +189,7 @@ createApp({
             document.removeEventListener('mouseup', this.endDrag);
         },
         saveAnnotation() {
-            if (!this.currentSelection || !this.formData.type) return;
+            if (!this.currentSelection) return;
 
             const typeLabels = {
                 'material': '素材标注',
@@ -194,8 +200,8 @@ createApp({
 
             const annotation = {
                 id: this.editingId || this.nextId++,
-                type: this.formData.type,
-                typeLabel: typeLabels[this.formData.type],
+                type: this.formData.type || '',
+                typeLabel: typeLabels[this.formData.type] || '未分类',
                 subType: this.formData.subType,
                 materialId: this.formData.materialId,
                 description: this.formData.description,
@@ -228,6 +234,9 @@ createApp({
                 materialId: null,
                 description: ''
             };
+        },
+        toggleCard(type) {
+            this.collapsedCards[type] = !this.collapsedCards[type];
         },
         editAnnotation(annotation) {
             this.editingId = annotation.id;
