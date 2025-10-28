@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI 标注工具</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: #f5f5f5;
+        }
+
+        #app {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 左侧注解记录区 */
+        .left-panel {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .panel-header h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .export-btn {
+            width: 100%;
+            padding: 12px;
+            background: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .export-btn:hover {
+            background: #1565c0;
+        }
+
+        .annotations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .annotation-item {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        .annotation-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .annotation-item.editing {
+            border-color: #1976d2;
+            background: #e3f2fd;
+        }
+
+        .annotation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .annotation-id {
+            font-weight: bold;
+            color: #d32f2f;
+            font-size: 14px;
+        }
+
+        .annotation-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .btn-edit {
+            background: #2196f3;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #1976d2;
+        }
+
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #d32f2f;
+        }
+
+        .annotation-content {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .annotation-type {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        /* 中间图片区域 */
+        .center-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #fafafa;
+            position: relative;
+        }
+
+        .image-upload-area {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1;
+        }
+
+        .upload-box {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-box:hover {
+            border-color: #1976d2;
+            background: #f5f5f5;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .image-container {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        #main-image {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+            user-select: none;
+        }
+
+        #selection-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+
+        .selection-box {
+            position: absolute;
+            border: 2px solid #f44336;
+            pointer-events: none;
+        }
+
+        .selection-id {
+            position: absolute;
+            background: #f44336;
+            color: white;
+            padding: 2px 6px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 3px;
+        }
+
+        /* 右侧功能面板 */
+        .right-panel {
+            width: 350px;
+            background: white;
+            border-left: 1px solid #e0e0e0;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .right-panel h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .form-select, .form-input, .form-textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-select:focus, .form-input:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #1976d2;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .material-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .material-item {
+            aspect-ratio: 1;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f5f5f5;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .material-item:hover {
+            border-color: #1976d2;
+        }
+
+        .material-item.selected {
+            border-color: #1976d2;
+            background: #e3f2fd;
+        }
+
+        .material-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .submit-btn:hover {
+            background: #45a049;
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .current-selection {
+            background: #fff3e0;
+            border: 1px solid #ffb74d;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 20px;
+        }
+
+        .current-selection-title {
+            font-weight: 500;
+            color: #e65100;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .current-selection-coords {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .toolbar {
+            padding: 10px 20px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .toolbar-btn {
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .toolbar-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 左侧注解记录 -->
+        <div class="left-panel">
+            <div class="panel-header">
+                <h2>标注记录</h2>
+                <button class="export-btn" @click="exportData" :disabled="annotations.length === 0">
+                    导出数据
+                </button>
+            </div>
+            <div class="annotations-list">
+                <div v-if="annotations.length === 0" class="empty-state">
+                    暂无标注记录<br>
+                    开始在效果图上框选区域
+                </div>
+                <div 
+                    v-for="annotation in annotations" 
+                    :key="annotation.id"
+                    class="annotation-item"
+                    :class="{ editing: editingId === annotation.id }"
+                >
+                    <div class="annotation-header">
+                        <span class="annotation-id">ID: {{ annotation.id }}</span>
+                        <div class="annotation-actions">
+                            <button class="btn-small btn-edit" @click="editAnnotation(annotation)">
+                                编辑
+                            </button>
+                            <button class="btn-small btn-delete" @click="deleteAnnotation(annotation.id)">
+                                删除
+                            </button>
+                        </div>
+                    </div>
+                    <div class="annotation-content">
+                        <div class="annotation-type">{{ annotation.typeLabel }}</div>
+                        <div v-if="annotation.subType">子类型: {{ annotation.subType }}</div>
+                        <div v-if="annotation.description">说明: {{ annotation.description }}</div>
+                        <div style="margin-top: 4px; color: #999;">
+                            位置: ({{ annotation.x }}, {{ annotation.y }}) 
+                            尺寸: {{ annotation.width }} × {{ annotation.height }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间效果图区域 -->
+        <div class="center-panel">
+            <div class="toolbar" v-if="imageLoaded">
+                <button class="toolbar-btn" @click="clearImage">
+                    清除图片
+                </button>
+                <button class="toolbar-btn" @click="clearAllAnnotations">
+                    清除所有标注
+                </button>
+                <span style="margin-left: auto; color: #666; font-size: 14px;">
+                    在图片上拖动鼠标进行框选
+                </span>
+            </div>
+            
+            <div v-if="!imageLoaded" class="image-upload-area">
+                <div class="upload-box" @click="triggerFileInput">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">点击上传效果图</div>
+                    <div class="upload-hint">或使用 Ctrl+V 粘贴图片</div>
+                </div>
+                <input 
+                    type="file" 
+                    ref="fileInput" 
+                    accept="image/*" 
+                    class="hidden" 
+                    @change="handleFileUpload"
+                >
+            </div>
+
+            <div class="image-container" v-if="imageLoaded">
+                <div class="canvas-wrapper" ref="canvasWrapper">
+                    <img 
+                        ref="mainImage" 
+                        id="main-image" 
+                        :src="imageSrc"
+                        @load="onImageLoad"
+                    >
+                    <canvas 
+                        ref="canvas" 
+                        id="selection-canvas"
+                        @mousedown="startSelection"
+                        @mousemove="updateSelection"
+                        @mouseup="endSelection"
+                    ></canvas>
+                    <!-- 显示已保存的标注框 -->
+                    <div 
+                        v-for="annotation in annotations" 
+                        :key="annotation.id"
+                        class="selection-box"
+                        :style="{
+                            left: annotation.x + 'px',
+                            top: annotation.y + 'px',
+                            width: annotation.width + 'px',
+                            height: annotation.height + 'px'
+                        }"
+                    >
+                        <span class="selection-id" :style="{ right: '-2px', bottom: '-20px' }">
+                            {{ annotation.id }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧标注功能面板 -->
+        <div class="right-panel">
+            <h2>标注面板</h2>
+
+            <div v-if="currentSelection" class="current-selection">
+                <div class="current-selection-title">当前选区</div>
+                <div class="current-selection-coords">
+                    位置: ({{ currentSelection.x }}, {{ currentSelection.y }})<br>
+                    尺寸: {{ currentSelection.width }} × {{ currentSelection.height }}
+                </div>
+            </div>
+
+            <form @submit.prevent="saveAnnotation">
+                <div class="form-group">
+                    <label class="form-label">标注类型 *</label>
+                    <select v-model="formData.type" class="form-select" required>
+                        <option value="">请选择标注类型</option>
+                        <option value="material">素材标注</option>
+                        <option value="function">功能标注</option>
+                        <option value="basic-component">基础组件标注</option>
+                        <option value="business-component">业务组件标注</option>
+                    </select>
+                </div>
+
+                <!-- 素材标注 -->
+                <div v-if="formData.type === 'material'" class="form-group">
+                    <label class="form-label">选择素材</label>
+                    <div class="material-selector">
+                        <div 
+                            v-for="i in 6" 
+                            :key="i"
+                            class="material-item"
+                            :class="{ selected: formData.materialId === i }"
+                            @click="formData.materialId = i"
+                        >
+                            素材{{ i }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 功能标注 -->
+                <div v-if="formData.type === 'function'" class="form-group">
+                    <label class="form-label">功能类型 *</label>
+                    <select v-model="formData.subType" class="form-select" required>
+                        <option value="">请选择功能类型</option>
+                        <option value="按钮">按钮</option>
+                        <option value="静态数据">静态数据</option>
+                        <option value="动态数据">动态数据</option>
+                        <option value="轮播">轮播</option>
+                        <option value="输入框">输入框</option>
+                        <option value="下拉菜单">下拉菜单</option>
+                    </select>
+                </div>
+
+                <!-- 基础组件标注 -->
+                <div v-if="formData.type === 'basic-component'" class="form-group">
+                    <label class="form-label">基础组件 *</label>
+                    <select v-model="formData.subType" class="form-select" required>
+                        <option value="">请选择基础组件</option>
+                        <option value="Button">Button</option>
+                        <option value="Input">Input</option>
+                        <option value="Select">Select</option>
+                        <option value="Card">Card</option>
+                        <option value="Modal">Modal</option>
+                        <option value="Table">Table</option>
+                    </select>
+                </div>
+
+                <!-- 业务组件标注 -->
+                <div v-if="formData.type === 'business-component'" class="form-group">
+                    <label class="form-label">业务组件 *</label>
+                    <input 
+                        v-model="formData.subType" 
+                        type="text" 
+                        class="form-input" 
+                        placeholder="输入业务组件名称"
+                        required
+                    >
+                </div>
+
+                <!-- 补充说明 -->
+                <div class="form-group">
+                    <label class="form-label">补充说明</label>
+                    <textarea 
+                        v-model="formData.description" 
+                        class="form-textarea" 
+                        placeholder="添加额外的说明信息..."
+                    ></textarea>
+                </div>
+
+                <button 
+                    type="submit" 
+                    class="submit-btn"
+                    :disabled="!currentSelection || !formData.type"
+                >
+                    {{ editingId ? '更新标注' : '保存标注' }}
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="index.js"></script>
+</html>
+
