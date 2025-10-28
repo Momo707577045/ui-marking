@@ -8,6 +8,10 @@ createApp({
             annotations: [],
             currentSelection: null,
             isSelecting: false,
+            isDragging: false,
+            dragStartX: 0,
+            dragStartY: 0,
+            draggingAnnotationId: null,
             startX: 0,
             startY: 0,
             nextId: 1,
@@ -26,6 +30,8 @@ createApp({
     },
     beforeUnmount() {
         window.removeEventListener('paste', this.handlePaste);
+        document.removeEventListener('mousemove', this.onDrag);
+        document.removeEventListener('mouseup', this.endDrag);
     },
     methods: {
         triggerFileInput() {
@@ -70,39 +76,48 @@ createApp({
             });
         },
         startSelection(event) {
+            // 检查是否点击在标注框的拖拽区域
+            if (event.target.classList.contains('drag-handle')) {
+                return;
+            }
+            
             const rect = this.$refs.canvas.getBoundingClientRect();
             this.isSelecting = true;
             this.startX = event.clientX - rect.left;
             this.startY = event.clientY - rect.top;
+            
+            // 初始化当前选区
+            this.currentSelection = {
+                x: Math.round(this.startX),
+                y: Math.round(this.startY),
+                width: 0,
+                height: 0
+            };
         },
         updateSelection(event) {
             if (!this.isSelecting) return;
 
-            const canvas = this.$refs.canvas;
-            const ctx = canvas.getContext('2d');
-            const rect = canvas.getBoundingClientRect();
-            
+            const rect = this.$refs.canvas.getBoundingClientRect();
             const currentX = event.clientX - rect.left;
             const currentY = event.clientY - rect.top;
 
-            // 清除画布
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 实时更新当前选区
+            const x = Math.min(this.startX, currentX);
+            const y = Math.min(this.startY, currentY);
+            const width = Math.abs(currentX - this.startX);
+            const height = Math.abs(currentY - this.startY);
 
-            // 绘制选择框
-            const width = currentX - this.startX;
-            const height = currentY - this.startY;
-
-            ctx.strokeStyle = '#f44336';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(this.startX, this.startY, width, height);
+            this.currentSelection = {
+                x: Math.round(x),
+                y: Math.round(y),
+                width: Math.round(width),
+                height: Math.round(height)
+            };
         },
         endSelection(event) {
             if (!this.isSelecting) return;
 
-            const canvas = this.$refs.canvas;
-            const ctx = canvas.getContext('2d');
-            const rect = canvas.getBoundingClientRect();
-            
+            const rect = this.$refs.canvas.getBoundingClientRect();
             const endX = event.clientX - rect.left;
             const endY = event.clientY - rect.top;
 
@@ -110,9 +125,6 @@ createApp({
             const y = Math.min(this.startY, endY);
             const width = Math.abs(endX - this.startX);
             const height = Math.abs(endY - this.startY);
-
-            // 清除画布
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // 只有当选区大小足够时才保存
             if (width > 10 && height > 10) {
@@ -122,9 +134,53 @@ createApp({
                     width: Math.round(width),
                     height: Math.round(height)
                 };
+            } else {
+                // 如果选区太小，清除
+                this.currentSelection = null;
             }
 
             this.isSelecting = false;
+        },
+        startDrag(event, annotationId) {
+            event.stopPropagation();
+            this.isDragging = true;
+            this.draggingAnnotationId = annotationId;
+            this.dragStartX = event.clientX;
+            this.dragStartY = event.clientY;
+            
+            // 添加全局鼠标移动和释放监听
+            document.addEventListener('mousemove', this.onDrag);
+            document.addEventListener('mouseup', this.endDrag);
+        },
+        onDrag(event) {
+            if (!this.isDragging) return;
+            
+            const deltaX = event.clientX - this.dragStartX;
+            const deltaY = event.clientY - this.dragStartY;
+            
+            const canvas = this.$refs.canvas;
+            const maxX = canvas ? canvas.width : Infinity;
+            const maxY = canvas ? canvas.height : Infinity;
+            
+            // 只允许拖拽临时选区（创建或编辑状态）
+            if (this.draggingAnnotationId === 'current' && this.currentSelection) {
+                const newX = this.currentSelection.x + deltaX;
+                const newY = this.currentSelection.y + deltaY;
+                
+                this.currentSelection.x = Math.max(0, Math.min(newX, maxX - this.currentSelection.width));
+                this.currentSelection.y = Math.max(0, Math.min(newY, maxY - this.currentSelection.height));
+            }
+            
+            this.dragStartX = event.clientX;
+            this.dragStartY = event.clientY;
+        },
+        endDrag() {
+            this.isDragging = false;
+            this.draggingAnnotationId = null;
+            
+            // 移除全局监听
+            document.removeEventListener('mousemove', this.onDrag);
+            document.removeEventListener('mouseup', this.endDrag);
         },
         saveAnnotation() {
             if (!this.currentSelection || !this.formData.type) return;

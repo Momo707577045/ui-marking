@@ -224,14 +224,32 @@
             pointer-events: none;
         }
 
+        .selection-box.temporary {
+            border-style: dashed;
+            border-color: #ff9800;
+        }
+
         .selection-id {
             position: absolute;
             background: #f44336;
             color: white;
-            padding: 2px 6px;
+            padding: 4px 8px;
             font-size: 12px;
             font-weight: bold;
             border-radius: 3px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .selection-box.temporary .selection-id {
+            background: #ff9800;
+            pointer-events: auto;
+            cursor: move;
+        }
+
+        .drag-handle {
+            pointer-events: auto;
+            cursor: move;
         }
 
         /* 右侧功能面板 */
@@ -501,10 +519,41 @@
                         @mousemove="updateSelection"
                         @mouseup="endSelection"
                     ></canvas>
+                    <!-- 显示临时选区 或 编辑中的选区 -->
+                    <div 
+                        v-if="currentSelection && !isSelecting"
+                        class="selection-box temporary"
+                        :style="{
+                            left: currentSelection.x + 'px',
+                            top: currentSelection.y + 'px',
+                            width: currentSelection.width + 'px',
+                            height: currentSelection.height + 'px'
+                        }"
+                    >
+                        <span 
+                            class="selection-id drag-handle" 
+                            :style="{ right: '-2px', bottom: '-22px' }"
+                            @mousedown="startDrag($event, 'current')"
+                        >
+                            {{ editingId ? '编辑中' : '待保存' }}
+                        </span>
+                    </div>
+                    <!-- 显示框选中的临时选区 -->
+                    <div 
+                        v-if="isSelecting && currentSelection"
+                        class="selection-box temporary"
+                        :style="{
+                            left: currentSelection.x + 'px',
+                            top: currentSelection.y + 'px',
+                            width: currentSelection.width + 'px',
+                            height: currentSelection.height + 'px'
+                        }"
+                    ></div>
                     <!-- 显示已保存的标注框 -->
                     <div 
                         v-for="annotation in annotations" 
                         :key="annotation.id"
+                        v-show="annotation.id !== editingId"
                         class="selection-box"
                         :style="{
                             left: annotation.x + 'px',
@@ -513,7 +562,10 @@
                             height: annotation.height + 'px'
                         }"
                     >
-                        <span class="selection-id" :style="{ right: '-2px', bottom: '-20px' }">
+                        <span 
+                            class="selection-id" 
+                            :style="{ right: '-2px', bottom: '-22px' }"
+                        >
                             {{ annotation.id }}
                         </span>
                     </div>
